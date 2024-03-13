@@ -3,11 +3,29 @@ import pandas as pd
 import streamlit as st
 import base64
 import pickle
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.svm import SVC
 import io
 from PIL import Image
+from sklearn.tree import DecisionTreeRegressor
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.figure_factory as ff
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+
+
+def video_preview(video_url, title, description):
+    st.subheader(title)
+    st.text(description)
+    st.video(video_url)
+
+def card(name, location, review):
+    st.markdown(f"## {name}")
+    st.markdown(f"**Location:** {location}")
+    st.write(review)
 
 # Load your machine learning model and data
 model = pickle.load(open('model.pkl', 'rb'))
@@ -16,6 +34,123 @@ df = pd.read_csv("crop_prediction_model_one.csv")
 # Load your machine learning model and data
 model2 = pickle.load(open('model2.pkl', 'rb'))
 df2 = pd.read_csv("Soil.csv")
+
+# Load your machine learning model and data
+# model3 = pickle.load(open('model3.pkl', 'rb'))
+df3 = pd.read_csv("Fertilizer.csv")
+
+# Update column names based on your fertilizer dataset
+X_fertilizer = df3[['Temparature', 'Humidity ', 'Moisture', 'Soil Type', 'Crop Type', 'Nitrogen', 'Potassium', 'Phosphorous']]
+y_fertilizer = df3['Fertilizer Name']
+
+# Separate numerical and categorical features
+numerical_features_fertilizer = ['Temparature', 'Humidity ', 'Moisture', 'Nitrogen', 'Potassium', 'Phosphorous']
+categorical_features_fertilizer = ['Soil Type', 'Crop Type']
+
+# Create transformers for numerical and categorical features
+numeric_transformer_fertilizer = Pipeline(steps=[
+    ('scaler', StandardScaler())
+])
+
+categorical_transformer_fertilizer = Pipeline(steps=[
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Use ColumnTransformer to apply transformers to the respective features
+preprocessor_fertilizer = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer_fertilizer, numerical_features_fertilizer),
+        ('cat', categorical_transformer_fertilizer, categorical_features_fertilizer)
+    ])
+
+# Fit the preprocessor on the training data
+preprocessor_fertilizer.fit(X_fertilizer)
+
+# Define the SVC classifier and the parameter grid for RandomizedSearchCV
+svc_fertilizer = SVC()
+
+grid_fertilizer = {
+    'C': [0.1, 1, 10, 100],
+    'kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
+    'gamma': ['scale', 'auto', 0.1, 1, 10],
+    'degree': [2, 3, 4, 5]
+}
+
+# Setup RandomizedSearchCV for fertilizer prediction
+rs_svc_fertilizer = RandomizedSearchCV(estimator=svc_fertilizer,
+                                       param_distributions=grid_fertilizer,
+                                       n_iter=10,
+                                       cv=5,
+                                       verbose=2,
+                                       n_jobs=-1)
+
+# Create a pipeline with preprocessing and SVC for fertilizer prediction
+pipeline_fertilizer = Pipeline(steps=[('preprocessor', preprocessor_fertilizer),
+                                       ('svc', rs_svc_fertilizer)])
+
+# Split the data into training and testing sets for fertilizer prediction
+X_train_fertilizer, X_test_fertilizer, y_train_fertilizer, y_test_fertilizer = train_test_split(X_fertilizer, y_fertilizer, test_size=0.2, random_state=42)
+
+# Fit the pipeline on the training set for fertilizer prediction
+pipeline_fertilizer.fit(X_train_fertilizer, y_train_fertilizer)
+
+# Load the preprocessor and model from the pickle file
+with open('model3.pkl', 'rb') as file:
+    pipeline_fertilizer = pickle.load(file)
+
+def predict_fertilizer(temperature, humidity, moisture, soil_type, crop_type, nitrogen, potassium, phosphorous):
+    # Create a DataFrame with the input data
+    input_data = pd.DataFrame({
+        'Temparature': [temperature],
+        'Humidity ': [humidity],
+        'Moisture': [moisture],
+        'Soil Type': [soil_type],
+        'Crop Type': [crop_type],
+        'Nitrogen': [nitrogen],
+        'Potassium': [potassium],
+        'Phosphorous': [phosphorous]
+    })
+
+    # Make the prediction using the loaded pipeline
+    prediction = pipeline_fertilizer.predict(input_data)
+
+    return prediction[0]
+
+    
+
+def bar_plot_drawer(x, y):
+    fig = plt.figure(figsize=(20, 15))
+    sns.set_style("whitegrid")
+    sns.barplot(data=df3, x=x, y=y)
+    plt.xlabel("Fertilizers", fontsize=22)
+    plt.ylabel(y, fontsize=22)
+    plt.xticks(rotation=90, fontsize=18)
+    plt.legend(prop={'size': 18})
+    plt.yticks(fontsize=16)
+    st.write(fig)
+
+def scatter_plot_drawer(x, y):
+    fig = plt.figure(figsize=(20, 15))
+    sns.set_style("whitegrid")
+    sns.scatterplot(data=df3, x=x, y=y, hue="Fertilizer Name", size="Fertilizer Name", palette="deep", sizes=(20, 200), legend="full")
+    plt.xlabel(x, fontsize=22)
+    plt.ylabel(y, fontsize=22)
+    plt.xticks(rotation=90, fontsize=18)
+    plt.legend(prop={'size': 18})
+    plt.yticks(fontsize=16)
+    st.write(fig)
+
+def box_plot_drawer(x, y):
+    fig = plt.figure(figsize=(20, 15))
+    sns.set_style("whitegrid")
+    sns.boxplot(x=x, y=y, data=df3)
+    sns.despine(offset=10, trim=True)
+    plt.xlabel("Fertilizers", fontsize=22)
+    plt.ylabel(y, fontsize=22)
+    plt.xticks(rotation=90, fontsize=18)
+    plt.legend(prop={'size': 18})
+    plt.yticks(fontsize=16)
+    st.write(fig)
 
 converts_dict = {
     'Nitrogen': 'N',
@@ -159,23 +294,83 @@ def main():
     </div>
     """
 
-    st.sidebar.title("Select one")
-    select_type = st.sidebar.radio("", ('crop prediction','soil prediction'))
+    st.sidebar.title("What's in Store?")
+    select_type = st.sidebar.radio("", ('Home','crop prediction','soil prediction','Fertilizer Prediction','NPk Ratio','Farmers Testimonials','Support Resource'))
+    if select_type == 'Home':
+        st.title("IntelliFarmTech - Smart Farming with AI")
+        st.image("./images/homepage3.jpg",width=590)
+        st.markdown(
+    """<p style="font-size:19px;">
+            IntelliFarm Tech is a precision farming solution designed to revolutionize modern agriculture by leveraging machine learning, Python, and Streamlit. The project aims to provide farmers with real-time, data-driven insights to enhance crop yield, optimize resource utilization, and foster sustainable farming practices.
+        </p>
+    """, unsafe_allow_html=True)
+        st.header("What's New on This Website")
+        st.header("Why IntelliFarmTech?")
+        video_path = "./images/English_intro.mp4"  # Replace with the actual path to your video file
+        st.video(video_path)
+        st.header("Watch Our Intro Video")
+        video_path = "./images/IFT Intro Video - Stomp1.mp4"  # Replace with the actual path to your video file
+        st.video(video_path)
+        st.header("What's in IntelliFarmTech?")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.subheader("Crop Prediction")
+            st.image("./images/crop_prediction.webp", caption="About Crop Prediction",
+                 width=200)
+            st.markdown(
+            """<p style="font-size:18px;">
+            Visualize and predict the most suitable crop for your field using advanced machine learning algorithms. Make informed decisions to optimize your crop yield.
+            </p>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.subheader("Soil Prediction")
+            st.image("./images/soil_prediction.png", caption="About Soil Prediction",
+                 width=200)
+            st.markdown(
+            """<p style="font-size:18px;">
+            Gain insights into your soil health and make informed decisions by predicting soil conditions. Enhance your farming practices with accurate soil predictions.
+            </p>
+            """, unsafe_allow_html=True)
 
+    
+        with col3:
+            st.subheader("Fertilizer Prediction")
+            st.image("./images/fertilizer.jpeg", caption="About Fertilizer Prediction",
+                 width=200)
+            st.markdown(
+            """<p style="font-size:18px;">
+            Optimize your fertilizer usage by predicting the right type and quantity for your crops. Improve resource utilization and promote sustainable farming practices.
+            </p>
+            """, unsafe_allow_html=True)
+        
     if select_type == 'crop prediction':
-        st.sidebar.title("Select One")
+        st.sidebar.title("Let's go to....")
         select_type = st.sidebar.radio("", ('Home','Data Info','visualize crop', 'Predict Your Crop'))
          
 
         if select_type == 'Home':
-           st.title("IntelliFarmTech - For Farmers")
-           st.image("./images/homepage.PNG")
-           st.markdown(
-    """<p style="font-size:20px;">
-            IntelliFarm Tech is a precision farming solution designed to revolutionize modern agriculture by leveraging machine learning, Python, and Streamlit. The project aims to provide farmers with real-time, data-driven insights to enhance crop yield, optimize resource utilization, and foster sustainable farming practices.
+            st.header("Crop Prediction")
+            st.subheader("Visualizing Crops")
+            st.image("./images/crophome.jpg", caption="Visualizing Crops",
+             width=400)
+            st.markdown(
+        """<p style="font-size:16px;">
+        Get a clear visualization of different crops and their growth stages. Understand the characteristics that affect crop health and yield.
         </p>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+            st.write("\n")
 
+        st.subheader("Predicting Crops")
+        st.image("./images/crop_prediction.webp", caption="Predicting Crops",
+             width=400)
+        st.markdown(
+        """<p style="font-size:16px;">
+        Utilize advanced machine learning algorithms to predict the most suitable crops for your field. Make informed decisions to optimize your crop yield.
+        </p>
+        """, unsafe_allow_html=True)
+        st.write("\n")
+
+   
 
 
         if select_type == 'Data Info':
@@ -268,13 +463,13 @@ def main():
             st.markdown(html_temp_pred, unsafe_allow_html=True)
             st.header("To predict your crop give values")
             st.subheader("Drag to Give Values")
-            n = st.slider('Nitrogen', 0, 140)
-            p = st.slider('Phosphorus', 5, 145)
-            k = st.slider('Potassium', 5, 205)
-            temperature = st.slider('Temperature', 8.83, 43.68)
-            humidity = st.slider('Humidity', 14.26, 99.98)
-            ph = st.slider('pH', 3.50, 9.94)
-            rainfall = st.slider('Rainfall', 20.21, 298.56)
+            n = st.slider('Nitrogen (नाइट्रोजन) (నత్రజని) (నైట్రోజన్)', 0, 140)
+            p = st.slider('Phosphorus (फास्फोरस ) (భాస్వరం)', 5, 145)
+            k = st.slider('Potassium (पोटैशियम) (పొటాషియం) (K)', 5, 205)
+            temperature = st.slider('Temperature (तापमान) (ఉష్ణోగ్రత)', 8.83, 43.68)
+            humidity = st.slider('Humidity (नमी) (తేమ)', 14.26, 99.98)
+            ph = st.slider('pH (Hydrogen) (హైడ్రోజన్) (हाइड्रोजन)', 3.50, 9.94)
+            rainfall = st.slider('Rainfall (वर्षा) (వర్షపాతం)', 20.21, 298.56)
             
             if st.button("Predict your crop"):
                 output=predict_crop(n, p, k, temperature, humidity, ph, rainfall)
@@ -283,17 +478,44 @@ def main():
                 
 
     elif select_type == 'soil prediction':
-        st.sidebar.title("Select One")
+        st.sidebar.title("Let's go to....")
         select_type = st.sidebar.radio("", ('Home','Data Info','visualize soil columns', 'Predict Your soil'))
 
+
         if select_type == 'Home':
-           st.title("IntelliFarmTech - For Farmers")
-           st.image("./images/homepage.PNG")
-           st.markdown(
-    """<p style="font-size:20px;">
-            IntelliFarm Tech is a precision farming solution designed to revolutionize modern agriculture by leveraging machine learning, Python, and Streamlit. The project aims to provide farmers with real-time, data-driven insights to enhance crop yield, optimize resource utilization, and foster sustainable farming practices.
+
+            st.header("Soil Prediction")
+
+            st.subheader("Understanding Soil Health")
+            st.image("./images/img1.jpg", caption="Understanding Soil Health",
+             width=400)
+            st.markdown(
+        """<p style="font-size:16px;">
+        Gain deep insights into your soil health. Understand key factors such as nutrient levels, moisture content, and pH that influence crop growth.
         </p>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+            st.write("\n")
+
+            st.subheader("Predicting Soil Conditions")
+            st.image("./images/img5.jpg", caption="Predicting Soil Conditions",
+             width=400)
+            st.markdown(
+        """<p style="font-size:16px;">
+        Predict soil conditions with precision. Use cutting-edge algorithms to forecast changes in soil quality, helping you make informed decisions.
+        </p>
+        """, unsafe_allow_html=True)
+            st.write("\n")
+
+            st.subheader("Optimizing Soil Management")
+            st.image("./images/img2.jpg", caption="Optimizing Soil Management",
+             width=400)
+            st.markdown(
+        """<p style="font-size:16px;">
+        Optimize your soil management practices based on predictive insights. Maximize crop yield by adjusting fertilization and irrigation strategies.
+        </p>
+        """, unsafe_allow_html=True)
+            st.write("\n")
+
 
         if select_type == 'Data Info':
              # Add title to the page
@@ -407,11 +629,11 @@ def main():
             min_B = float(df2['B'].min())
             max_B = float(df2['B'].max())
 
-            N = st.slider('Nitrogen (N)', min_value=min_N, max_value=max_N, value=min_N, step=1.0)
-            P = st.slider('Phosphorus (P)', min_value=min_P, max_value=max_P, value=min_P, step=1.0)
-            K = st.slider('Potassium (K)', min_value=min_K, max_value=max_K, value=min_K, step=1.0)
-            pH = st.slider('pH', min_value=min_pH, max_value=max_pH, value=min_pH, step=0.01)
-            EC = st.slider('EC', min_value=min_EC, max_value=max_EC, value=min_EC, step=0.01)
+            N = st.slider('Nitrogen (नाइट्रोजन) (నత్రజని) (నైట్రోజన్) (N)', min_value=min_N, max_value=max_N, value=min_N, step=1.0)
+            P = st.slider('Phosphorus (फास्फोरस) (భాస్వరం) (P)', min_value=min_P, max_value=max_P, value=min_P, step=1.0)
+            K = st.slider('Potassium (पोटैशियम) (పొటాషియం) (K)', min_value=min_K, max_value=max_K, value=min_K, step=1.0)
+            pH = st.slider('pH (Hydrogen) (హైడ్రోజన్) (हाइड्रोजन)', min_value=min_pH, max_value=max_pH, value=min_pH, step=0.01)
+            EC = st.slider('EC (Emulsifiable concentrate) ', min_value=min_EC, max_value=max_EC, value=min_EC, step=0.01)
             OC = st.slider('OC', min_value=min_OC, max_value=max_OC, value=min_OC, step=0.01)
             S = st.slider('S', min_value=min_S, max_value=max_S, value=min_S, step=1.0)
             Zn = st.slider('Zn', min_value=min_Zn, max_value=max_Zn, value=min_Zn, step=1.0)
@@ -420,13 +642,400 @@ def main():
             Mn = st.slider('Mn', min_value=min_Mn, max_value=max_Mn, value=min_Mn, step=1.0)
             B = st.slider('B', min_value=min_B, max_value=max_B, value=min_B, step=0.01)
 
-            if st.button("Predict your crop"):
+            if st.button("Predict your soil"):
                 output = predict_soil(N, P, K, pH, EC, OC, S, Zn, Fe, Cu, Mn, B)
                 output_str = str(output).capitalize()
                 if output_str == 0:
-                    st.success(f'The most suitable crop for your field is: This soil is not Good for cultivate')
+                    st.success(f'This soil is not Good for cultivation')
                 else:
-                    st.success(f'The most suitable crop for your field is: This soil is Good for cultivate')
+                    st.success(f'This soil is Good for cultivation')
+
+    elif select_type == 'Fertilizer Prediction':
+        st.sidebar.title("Know about Fertilizer")
+        select_type = st.sidebar.radio("", ('Home', 'Data Info','Visualize Fertilizer', 'Predict Fertilizer'))
+         
+
+        if select_type == 'Home':
+
+           st.header("Fertilizer Prediction")
+
+           st.subheader("Optimizing Fertilizer Usage")
+           st.image("./images/fertilizerhome.jpg", caption="Optimizing Fertilizer Usage",
+             width=400)
+           st.markdown(
+        """<p style="font-size:16px;">
+        Optimize your fertilizer usage with predictive analytics. Tailor the type and quantity of fertilizers to maximize crop nutrition and minimize waste.
+        </p>
+        """, unsafe_allow_html=True)
+           st.write("\n")
+
+           st.subheader("Balancing Nutrient Levels")
+           st.image("./images/img8.jpg", caption="Balancing Nutrient Levels",
+             width=400)
+           st.markdown(
+        """<p style="font-size:16px;">
+        Achieve optimal nutrient balance in your soil. Predict the right composition of fertilizers to ensure healthy crop growth and minimize environmental impact.
+        </p>
+        """, unsafe_allow_html=True)
+           st.write("\n")
+
+           st.subheader("Promoting Sustainable Practices")
+           st.image("./images/img6.jpg", caption="Promoting Sustainable Practices",
+             width=400)
+           st.markdown(
+        """<p style="font-size:16px;">
+        Embrace sustainable farming practices by predicting and implementing eco-friendly fertilizer strategies. Contribute to environmental conservation while maximizing yield.
+        </p>
+        """, unsafe_allow_html=True)
+           st.write("\n")
+
+
+
+
+
+        if select_type == 'Data Info':
+            st.title("Data Info page")
+            st.subheader("View Data")
+            with st.expander("View data"):
+                st.dataframe(df3)
+            st.subheader("Columns Description:")
+            if st.checkbox("View Summary"):
+                st.dataframe(df3.describe())
+            col_name, col_dtype, col_data = st.columns(3)
+            with col_name:
+                if st.checkbox("Column Names"):
+                    st.dataframe(df3.columns)
+
+            with col_dtype:
+                if st.checkbox("Columns data types"):
+                    dtypes = df3.dtypes.apply(lambda x: x.name)
+                    st.dataframe(dtypes)
+
+       
+            with col_data:
+                if st.checkbox("Columns Data"):
+                    col = st.selectbox("Column Name", list(df3.columns))
+                    st.dataframe(df3[col])
+        elif select_type == 'Visualize Fertilizer':
+            st.subheader("Visualize Fertilizer Properties")
+            plot_type = st.selectbox("Select plot type", ('Bar Plot', 'Scatter Plot', 'Box Plot'))
+            st.subheader("Relation between features")
+
+            # Plot!
+            x = ""
+            y = ""
+
+            if plot_type == 'Bar Plot':
+                x = 'Fertilizer Name'
+                y = st.selectbox("Select a feature to compare between fertilizers",
+                    ('Temparature', 'Humidity ', 'Moisture', 'Nitrogen', 'Potassium', 'Phosphorous'))
+            if plot_type == 'Scatter Plot':
+                x = st.selectbox("Select a property for 'X' axis",
+                    ('Temparature', 'Humidity ', 'Moisture', 'Nitrogen', 'Potassium', 'Phosphorous'))
+                y = st.selectbox("Select a property for 'Y' axis",
+                    ('Humidity ', 'Moisture', 'Nitrogen', 'Potassium', 'Phosphorous'))
+            if plot_type == 'Box Plot':
+                x = 'Fertilizer Name'
+                y = st.selectbox("Select a feature",
+                    ('Temparature', 'Humidity ', 'Moisture', 'Nitrogen', 'Potassium', 'Phosphorous'))
+
+            if st.button("Visualize"):
+                if plot_type == 'Bar Plot':
+                    bar_plot_drawer(x, y)
+                if plot_type == 'Scatter Plot':
+                    scatter_plot_drawer(x, y)
+                if plot_type == 'Box Plot':
+                    box_plot_drawer(x, y)
+
+        if select_type == 'Predict Fertilizer':
+            st.header("To predict fertilizer recommendation, provide the following values:")
+            temperature = st.slider('Temperature', min_value=df3['Temparature'].min(), max_value=df3['Temparature'].max(), step=1, value=int(df3['Temparature'].mean()))
+            humidity = st.slider('Humidity (%)', min_value=df3['Humidity '].min(), max_value=df3['Humidity '].max(), step=1, value=int(df3['Humidity '].mean()))
+            moisture = st.slider('Moisture (%)', min_value=df3['Moisture'].min(), max_value=df3['Moisture'].max(), step=1, value=int(df3['Moisture'].mean()))
+            soil_type = st.selectbox('Select Soil Type', df3['Soil Type'].unique())
+            crop_type = st.selectbox('Select Crop Type', df3['Crop Type'].unique())
+            nitrogen = st.slider('Nitrogen', min_value=df3['Nitrogen'].min(), max_value=df3['Nitrogen'].max(), step=1, value=int(df3['Nitrogen'].mean()))
+            potassium = st.slider('Potassium', min_value=df3['Potassium'].min(), max_value=df3['Potassium'].max(), step=1, value=int(df3['Potassium'].mean()))
+            phosphorous = st.slider('Phosphorous', min_value=df3['Phosphorous'].min(), max_value=df3['Phosphorous'].max(), step=1, value=int(df3['Phosphorous'].mean()))
+
+            if st.button("Predict Fertilizer"):
+                output = predict_fertilizer(temperature, humidity, moisture, soil_type, crop_type, nitrogen, potassium, phosphorous)
+                st.success(f"The recommended fertilizer is: {output}")
+
+    elif select_type == 'NPk Ratio':
+        npkdataset = pd.read_csv('npkdataset.csv')
+
+        # Convert the NPK ratio string to separate columns
+        npkdataset[['N', 'P', 'K']] = npkdataset['NPK Ratio'].str.split(':', expand=True).astype(int)
+
+        # Features (X) and target (y)
+        X = npkdataset[['Land Area']]
+        y = npkdataset[['N', 'P', 'K']]
+
+        # Create a Decision Tree Regressor
+        regressor = DecisionTreeRegressor()
+
+        # Train the model
+        regressor.fit(X, y)
+
+        # Streamlit app
+        st.title("NPK Ratio Predictor")
+
+        # Input form
+        crop_types = npkdataset['Crop Type'].unique()
+        selected_crop_type = st.selectbox("Select Crop Type:", crop_types)
+        min_land_area = npkdataset['Land Area'].min()
+        max_land_area = npkdataset['Land Area'].max()
+        land_area = st.slider("Select Land Area:", min_value=min_land_area, max_value=max_land_area)
+
+        # Make prediction when the 'Predict' button is clicked
+        if st.button("Predict NPK Ratio"):
+            # Convert crop type to lowercase for case-insensitive matching
+            crop_type_lower = selected_crop_type.lower()
+
+            # Filter the dataset based on the given crop type
+            crop_data = npkdataset[npkdataset['Crop Type'].str.lower() == crop_type_lower]
+
+            # If data for the specific crop type exists
+            if not crop_data.empty:
+                # Predict NPK ratio for the given land area
+                predicted_npk = regressor.predict([[land_area]])
+                st.success(f"Predicted NPK Ratio for {selected_crop_type} with Land Area {land_area}: {predicted_npk[0]}")
+            else:
+                st.error(f"No data found for the specified crop type: {selected_crop_type}")
+
+    elif select_type == 'Farmers Testimonials':
+        st.sidebar.title("Let's go to....")
+        select_type = st.sidebar.radio("", ('Home','Videos','Testimonials'))
+         
+
+        if select_type == 'Home':
+           st.title("IntelliFarmTech - Smart Farming with AI")
+           st.image("./images/homepage.PNG")
+           st.markdown(
+    """<p style="font-size:20px;">
+            IntelliFarm Tech is a precision farming solution designed to revolutionize modern agriculture by leveraging machine learning, Python, and Streamlit. The project aims to provide farmers with real-time, data-driven insights to enhance crop yield, optimize resource utilization, and foster sustainable farming practices.
+        </p>
+    """, unsafe_allow_html=True)
+
+
+
+        if select_type == 'Videos':
+            st.markdown(
+                """
+                <style>
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                        background-color: #353535;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.title("Video Carousel")
+
+            videos = [
+                {
+                    "url": "https://youtu.be/K6Fd8iUGnz4?si=arV7vTa_aI1Wt0w-",
+                    "title": "Project Presentation video",
+                    "description": "This video will help you to go through our project journey",
+                    "thumbnail": "https://img.youtube.com/vi/yIAISaMrsJI/maxresdefault.jpg",
+                },
+                {
+                    "url": "https://youtu.be/0jUPrkHT2x0?si=BhVZnSXbQfMx8kgt",
+                    "title": "Presentation",
+                    "description": "Description for video 2. Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    "thumbnail": "https://img.youtube.com/vi/your_second_video_id/maxresdefault.jpg",
+                },
+                # Add more videos as needed
+            ]
+
+            for video in videos:
+                col = st.columns(2)
+                with col[0]:
+                    st.image(video["thumbnail"], use_column_width=True)
+                with col[1]:
+                    if st.button(video["title"]):
+                        video_preview(video["url"], video["title"], video["description"])
+        elif select_type == 'Testimonials':
+            st.markdown(
+                """
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f2eeeae7;
+                        display: flex;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin-left: 330px; /* Adjust the left margin based on your sidebar width */
+                        margin-right: 40px;
+                    }
+
+                    .markdown-text {
+                        color: #666;
+                    }
+
+                    .card-container {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 20px;
+                        margin: 20px;
+                    }
+
+                    .card {
+                        width: 300px;
+                        background-color: #ffffff;
+                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                        border-radius: 10px;
+                        transition: transform 0.3s ease-in-out;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .card:hover {
+                        transform: scale(1.05);
+                    }
+
+                    .card-heading {
+                        padding: 10px 20px;
+                        background-color: rgb(255, 75, 75);
+                        border-radius: 10px 10px 0 0;
+                        color: #fff;
+                    }
+
+                    .card-description {
+                        padding: 20px;
+                        border-radius: 0 0 10px 10px;
+                        flex-grow: 1;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.title("Grid Cards Page")
+
+            # Card 1
+            card("Name: Rajesh from Peddapuram", "Location: Peddapuram", "The project has been a boon for us in Peddapuram. With the guidance on soil and fertilizer usage, our crop yield has seen a significant rise. Thanks to the project, our farming practices have become more efficient.")
+
+            # Card 2
+            card("పేరు: మీనా ప్రాంతం: యానాం", "Location: యానాం", "యానాం సమీక్ష: \"యానాం సమీపంలో నివసిస్తున్నందున, నేను ఈ చొరవ యొక్క సానుకూల ప్రభావాన్ని ధృవీకరించగలను. నేల నిర్వహణ మరియు ఆధునిక వ్యవసాయ పద్ధతుల గురించి పంచుకున్న జ్ఞానం మా వ్యవసాయ ఉత్పత్తిని మెరుగుపరచడానికి నాకు మరియు సమాజానికి సహాయపడింది.")
+
+            # Card 3
+            card("नाम: अर्जुन क्षेत्र: समालकोट", "Location: समालकोट", "सामलकोट में, जहां कृषि जीवन का एक तरीका है, यह परियोजना एक गेम-चेंजर रही है। उर्वरक अनुप्रयोग पर अंतर्दृष्टि विशेष रूप से सहायक रही है। मैंने इनपुट लागत में उल्लेखनीय कमी और फसल की गुणवत्ता में वृद्धि देखी है।")
+
+            # Card 4
+            card("Name: Aarti Rajahmundry", "Location: Rajahmundry", "Rajahmundry farmers are grateful for the support provided by this project. The tips on using technology in agriculture have made our farming more sustainable. I appreciate the efforts to educate us.")
+
+            # Card 5
+            card("పేరు: విక్రమ్ ప్రాంతం: అమలాపురం", "Location: అమలాపురం", "సారవంతమైన భూములకు పేరుగాంచిన అమలాపురం ఈ ప్రాజెక్ట్ ద్వారా మెరుగైన వ్యవసాయ పద్ధతులను చూసింది. నేల ఆరోగ్యం మరియు సేంద్రియ పద్ధతులపై దృష్టి సానుకూల ప్రభావాన్ని చూపింది. బృందానికి వందనాలు!")
+
+            # Card 6
+            card("नाम: प्रिया क्षेत्र: पीथापुरम", "Location: पीथापुरम", "पीथापुरम के किसान इस पहल के माध्यम से साझा किए गए ज्ञान को अपना रहे हैं। उर्वरकों के सही उपयोग के बारे में जागरूकता से स्वस्थ फसलें पैदा हुई हैं और अंततः, हमारे लिए बेहतर आजीविका हुई है। समर्थन के लिए धन्यवाद!")
+    if select_type == 'Support Resource':
+        st.markdown(
+                """
+                <style>
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                        background-color: #353535;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.title("Video Carousel")
+
+        videos = [
+                {
+                    "url": "https://youtu.be/0jUPrkHT2x0?si=BhVZnSXbQfMx8kgt",
+                    "title": "Presentation",
+                    "description": "Description for video 2. Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    "thumbnail": "https://img.youtube.com/vi/your_second_video_id/maxresdefault.jpg",
+                },
+                {
+                    "url": "https://youtu.be/0jUPrkHT2x0?si=BhVZnSXbQfMx8kgt",
+                    "title": "Presentation",
+                    "description": "Description for video 2. Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+                    "thumbnail": "https://img.youtube.com/vi/your_second_video_id/maxresdefault.jpg",
+                },
+                # Add more videos as needed
+            ]
+
+        for video in videos:
+                col = st.columns(2)
+                with col[0]:
+                    st.image(video["thumbnail"], use_column_width=True)
+                with col[1]:
+                    if st.button(video["title"]):
+                        video_preview(video["url"], video["title"], video["description"])
+    elif select_type == 'Testimonials':
+        st.markdown(
+                """
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f2eeeae7;
+                        display: flex;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin-left: 330px; /* Adjust the left margin based on your sidebar width */
+                        margin-right: 40px;
+                    }
+
+                    .markdown-text {
+                        color: #666;
+                    }
+
+                    .card-container {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 20px;
+                        margin: 20px;
+                    }
+
+                    .card {
+                        width: 300px;
+                        background-color: #ffffff;
+                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                        border-radius: 10px;
+                        transition: transform 0.3s ease-in-out;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .card:hover {
+                        transform: scale(1.05);
+                    }
+
+                    .card-heading {
+                        padding: 10px 20px;
+                        background-color: rgb(255, 75, 75);
+                        border-radius: 10px 10px 0 0;
+                        color: #fff;
+                    }
+
+                    .card-description {
+                        padding: 20px;
+                        border-radius: 0 0 10px 10px;
+                        flex-grow: 1;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
 
 
 if __name__ == '__main__':
