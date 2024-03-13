@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'IntelliFarmTech'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F75931E7211942F7BD4094EE2E3B487D }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E92D8B2437E64405999B32B21C67444E }}
