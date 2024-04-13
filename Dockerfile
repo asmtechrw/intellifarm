@@ -8,8 +8,8 @@ COPY . .
 
 RUN pip install -r requirements.txt
 
-EXPOSE 8501
+EXPOSE 8503
 
 ENTRYPOINT ["streamlit", "run"]
 
-CMD ["stream_app.py"]
+CMD ["main.py"]
