@@ -297,11 +297,11 @@ def main():
     st.sidebar.title("What's in Store?")
     select_type = st.sidebar.radio("", ('Home','crop prediction','soil prediction','Fertilizer Prediction','NPk Ratio'))
     if select_type == 'Home':
-        st.title("IntelliFarmTech - Smart Farming with AI")
+        st.title("Smart Farming with AI")
         st.image("./images/mainhome.jpg",width=590)
         st.markdown(
     """<p style="font-size:19px;">
-            IntelliFarm Tech is a precision farming solution designed to revolutionize modern agriculture by leveraging machine learning, Python, and Streamlit. The project aims to provide farmers with real-time, data-driven insights to enhance crop yield, optimize resource utilization, and foster sustainable farming practices.
+            IntelliFarm is a precision farming solution designed to revolutionize modern agriculture by leveraging machine learning, Python, and Streamlit. The project aims to provide farmers with real-time, data-driven insights to enhance crop yield, optimize resource utilization, and foster sustainable farming practices.
         </p>
     """, unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
@@ -455,13 +455,13 @@ def main():
             st.markdown(html_temp_pred, unsafe_allow_html=True)
             st.header("To predict your crop give values")
             st.subheader("Drag to Give Values")
-            n = st.slider('Nitrogen'), 0, 140)
-            p = st.slider('Phosphorus (फास्फोरस ) (భాస్వరం)', 5, 145)
-            k = st.slider('Potassium (पोटैशियम) (పొటాషియం) (K)', 5, 205)
-            temperature = st.slider('Temperature (तापमान) (ఉష్ణోగ్రత)', 8.83, 43.68)
-            humidity = st.slider('Humidity (नमी) (తేమ)', 14.26, 99.98)
-            ph = st.slider('pH (Hydrogen) (హైడ్రోజన్) (हाइड्रोजन)', 3.50, 9.94)
-            rainfall = st.slider('Rainfall (वर्षा) (వర్షపాతం)', 20.21, 298.56)
+            n = st.slider('Nitrogen (N)', 0, 140)
+            p = st.slider('Phosphorus (P)', 5, 145)
+            k = st.slider('Potassium (K)', 5, 205)
+            temperature = st.slider('Temperature', 8.83, 43.68)
+            humidity = st.slider('Humidity', 14.26, 99.98)
+            ph = st.slider('pH', 3.50, 9.94)
+            rainfall = st.slider('Rainfall', 20.21, 298.56)
             
             if st.button("Predict your crop"):
                 output=predict_crop(n, p, k, temperature, humidity, ph, rainfall)
@@ -621,10 +621,10 @@ def main():
             min_B = float(df2['B'].min())
             max_B = float(df2['B'].max())
 
-            N = st.slider('Nitrogen (नाइट्रोजन) (నత్రజని) (నైట్రోజన్) (N)', min_value=min_N, max_value=max_N, value=min_N, step=1.0)
-            P = st.slider('Phosphorus (फास्फोरस) (భాస్వరం) (P)', min_value=min_P, max_value=max_P, value=min_P, step=1.0)
-            K = st.slider('Potassium (पोटैशियम) (పొటాషియం) (K)', min_value=min_K, max_value=max_K, value=min_K, step=1.0)
-            pH = st.slider('pH (Hydrogen) (హైడ్రోజన్) (हाइड्रोजन)', min_value=min_pH, max_value=max_pH, value=min_pH, step=0.01)
+            N = st.slider('Nitrogen (N)', min_value=min_N, max_value=max_N, value=min_N, step=1.0)
+            P = st.slider('Phosphorus (P)', min_value=min_P, max_value=max_P, value=min_P, step=1.0)
+            K = st.slider('Potassium (K)', min_value=min_K, max_value=max_K, value=min_K, step=1.0)
+            pH = st.slider('pH', min_value=min_pH, max_value=max_pH, value=min_pH, step=0.01)
             EC = st.slider('EC (Emulsifiable concentrate) ', min_value=min_EC, max_value=max_EC, value=min_EC, step=0.01)
             OC = st.slider('OC', min_value=min_OC, max_value=max_OC, value=min_OC, step=0.01)
             S = st.slider('S', min_value=min_S, max_value=max_S, value=min_S, step=1.0)
