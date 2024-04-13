@@ -455,7 +455,7 @@ def main():
             st.markdown(html_temp_pred, unsafe_allow_html=True)
             st.header("To predict your crop give values")
             st.subheader("Drag to Give Values")
-            n = st.slider('Nitrogen (नाइट्रोजन) (నత్రజని) (నైట్రోజన్)', 0, 140)
+            n = st.slider('Nitrogen'), 0, 140)
             p = st.slider('Phosphorus (फास्फोरस ) (భాస్వరం)', 5, 145)
             k = st.slider('Potassium (पोटैशियम) (పొటాషియం) (K)', 5, 205)
             temperature = st.slider('Temperature (तापमान) (ఉష్ణోగ్రత)', 8.83, 43.68)
