@@ -43,7 +43,7 @@ Agricultural communities face challenges such as suboptimal crop yields, diminis
 
 ## System Design/Architecture
 
-IntelliFarm Tech integrates Python and machine learning at the backend, with Streamlit serving as the GUI.
+IntelliFarm integrates Python and machine learning at the backend, with Streamlit serving as the GUI.
 
 ## Predicting The Crop
 ![Alt text](project_outputs/Predictyourcrop.PNG)
@@ -53,9 +53,10 @@ IntelliFarm Tech integrates Python and machine learning at the backend, with Str
 - **Algorithm:**
   - Logistic Regression
   - Random Forest Classifier
-  - Scikit Learn
+  - Scikit-Learn
   - Matplotlib
-  - NumPy and Pandas
+  - NumPy 
+  - Pandas
 
 ## Analysis and Planning
 
