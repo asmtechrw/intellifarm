@@ -78,9 +78,34 @@ Create a farmer-friendly Streamlit dashboard, design an intuitive navigation sys
 
 Validate model accuracy through testing data, deploy the system on Azure.
 
-
 ## Outcome Of The Predicted Soil/Crop In The Project
 
 ![Alt text](project_outputs/outcome.PNG)
+
+## Getting Started
+
+Clone this repository to your local machine:
+
+```bash
+git clone https://github.com/asmtechrw/intellifarm.git
+```
+
+Navigate to the project root directory:
+
+```bash
+cd intellifarm
+```
+
+Build the the image for the intellifarm server:
+
+```bash
+docker build . -t intellifarm
+```
+
+Start the intellifarm server:
+
+```bash
+docker run -p 8501:8501 -d --name intellifarm intellifarm
+```
 
 Thank you so much
