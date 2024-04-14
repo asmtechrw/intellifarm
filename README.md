@@ -82,7 +82,7 @@ Validate model accuracy through testing data, deploy the system on Azure.
 
 ![Alt text](project_outputs/outcome.PNG)
 
-## Getting Started
+## Install docker container
 
 Clone this repository to your local machine:
 
