@@ -5,7 +5,7 @@ LABEL maintainer="hrmuwanika@gmail.com"
 
 RUN apt-get update && apt full-upgrade -y && apt-get autoremove -y
 
-RUN apt-get install -y git wget
+RUN apt-get install -y git wget python3-pip python3-opencv
 
 RUN /usr/local/bin/python -m pip install --upgrade pip
 
