@@ -1,4 +1,11 @@
-FROM python:3.8.12-slim
+# The python image, used to build the virtual environment
+FROM python:3.10.14-slim
+
+LABEL maintainer="hrmuwanika@gmail.com"
+
+RUN apt-get update && apt full-upgrade -y && apt-get autoremove -y
+
+RUN apt-get install -y git wget
 
 RUN /usr/local/bin/python -m pip install --upgrade pip
 
@@ -6,7 +13,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
 
