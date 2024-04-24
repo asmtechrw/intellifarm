@@ -108,4 +108,5 @@ Start the intellifarm server:
 docker run -dit --name intellifarm -p 8501:8501 intellifarm:latest
 ```
 
+Once started, your application should be available on http://localhost:8501
 Thank you so much
