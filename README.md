@@ -105,7 +105,7 @@ docker build -f Dockerfile -t intellifarm:latest .
 Start the intellifarm server:
 
 ```bash
-docker run -dit --name intellifarm -p 8501:8501 intellifarm:latest
+docker run -d --restart unless-stopped --name intellifarm -p 8501:8501 intellifarm:latest
 ```
 
 Once started, your application should be available on http://localhost:8501
