@@ -99,7 +99,7 @@ cd intellifarm
 Build the the image for the intellifarm server:
 
 ```bash
-docker build -t intellifarm:latest .
+docker build -f Dockerfile -t intellifarm:latest .
 ```
 
 Start the intellifarm server:
